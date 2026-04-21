@@ -167,3 +167,5 @@ MIT — see [LICENSE](LICENSE).
 **Pymut Lab** | [Paper](papers/hymoex-cognitive-architecture.pdf) | [Docs](apps/docs/)
 
 </div>
+
+**Made with ❤️ by the Pymut lab**

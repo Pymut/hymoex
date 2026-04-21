@@ -43,12 +43,12 @@ Use `-s` to see printed metric output from each test.
 
 ## Benchmark Categories
 
-| Category | What it measures | Paper reference |
-|----------|-----------------|-----------------|
-| `coordination-overhead/` | Token cost across topologies (flat vs hierarchical) | Table 3, Q1 |
-| `expert-selection/` | MoE gating accuracy vs baselines | Table 3, Q3 |
-| `scalability/` | Latency degradation at 2-15 agents | Table 3, Q1 |
-| `migration-cost/` | Agent preservation across M1->M2->M3 | Table 3, Q2 |
+| Category                 | What it measures                                    | Paper reference |
+| ------------------------ | --------------------------------------------------- | --------------- |
+| `coordination-overhead/` | Token cost across topologies (flat vs hierarchical) | Table 3, Q1     |
+| `expert-selection/`      | MoE gating accuracy vs baselines                    | Table 3, Q3     |
+| `scalability/`           | Latency degradation at 2-15 agents                  | Table 3, Q1     |
+| `migration-cost/`        | Agent preservation across M1->M2->M3                | Table 3, Q2     |
 
 ## Notes
 
@@ -56,3 +56,5 @@ Use `-s` to see printed metric output from each test.
 - No API keys or external services required
 - The `conftest.py` in this directory provides shared fixtures (sample messages, expert factories)
 - The `run_all.py` script parses pytest output to extract key metrics and format them into Table 3
+
+**Made with ❤️ by the Pymut lab**

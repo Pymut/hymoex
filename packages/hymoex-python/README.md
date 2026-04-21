@@ -88,3 +88,5 @@ src/hymoex/
 ## License
 
 MIT
+
+**Made with ❤️ by the Pymut lab**

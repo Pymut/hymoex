@@ -276,3 +276,5 @@ Same as Hymoex project.
 - **Decision Guide**: `decision-guide.md`
 - **Recommended Stack**: `framework-mappings/pydantic-ai-mapping.md`
 - **Quick Reference**: `reference/component-reference.md`
+
+**Made with ❤️ by the Pymut lab**
