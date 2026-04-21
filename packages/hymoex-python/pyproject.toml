@@ -1,0 +1,111 @@
+[project]
+name = "hymoex"
+version = "0.1.0"
+description = "Hybrid Modular Coordinated Experts Multi-Agent Systems"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Joel Timana", email = "joel@pymut.ai"}]
+keywords = [
+    "multi-agent", "AI", "cognitive-architecture",
+    "mixture-of-experts", "enterprise-ai", "pydantic", "agent-architecture"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "typing-extensions>=4.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "mypy>=1.5",
+    "pre-commit>=3.0",
+]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.24",
+]
+benchmark = [
+    "pytest-benchmark>=4.0",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Pymut/hymoex"
+Repository = "https://github.com/Pymut/hymoex"
+Issues = "https://github.com/Pymut/hymoex/issues"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["hymoex*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "TCH"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["hymoex"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = false
+exclude = ["tests", "docs"]
+
+[[tool.mypy.overrides]]
+module = ["pydantic_ai.*", "langgraph.*", "crewai.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=hymoex --cov-report=html --cov-report=term"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/hymoex"]
+omit = ["*/tests/*", "*/benchmarks/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[dependency-groups]
+dev = [
+    "google-genai>=1.73.1",
+    "python-dotenv>=1.1.1",
+]
