@@ -1,0 +1,10 @@
+{
+  "name": "@hymoex/skills",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build step'",
+    "lint": "shellcheck installers/*.sh || true",
+    "clean": "echo 'Nothing to clean'"
+  }
+}
