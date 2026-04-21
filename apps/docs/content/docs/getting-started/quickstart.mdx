@@ -1,0 +1,101 @@
+---
+title: Quickstart
+description: Design your first Hymoex multi-agent architecture in under five minutes.
+---
+
+## Step 1: Define your architecture
+
+Hymoex provides Pydantic models to define your agent topology. Start by specifying roles and experts:
+
+```python
+from hymoex import (
+    ExpertSpec, ManagerSpec, SupervisorSpec,
+    OneLineSupervisor, auto_select_modality, validate_topology,
+)
+
+# Define agent specs (what each agent IS, not how it runs)
+manager = ManagerSpec(objective="Customer support", strategy="route_by_domain")
+supervisor = SupervisorSpec(routing="dependency_aware")
+
+legal = ExpertSpec(domain="legal", skills=["contract_review"])
+tech = ExpertSpec(domain="tech", skills=["diagnostics"])
+billing = ExpertSpec(domain="billing", skills=["invoicing"])
+
+experts = [legal, tech, billing]
+
+# Auto-select the right modality based on expert count
+modality = auto_select_modality(experts)
+print(f"Selected: {modality}")  # "m2" (3 experts -> One-Line Supervisor)
+```
+
+## Step 2: Build and validate the topology
+
+```python
+system = OneLineSupervisor(
+    manager=manager,
+    supervisor=supervisor,
+    experts=experts,
+)
+
+# Validate the architecture
+validation = validate_topology(system)
+print(f"Agents: {system.agent_count}, Valid: {validation['valid']}")
+
+# Export as JSON config
+config = system.to_config()
+```
+
+## Step 3: Implement with your framework
+
+Hymoex defines the **architecture** — your chosen framework provides the **execution**. Here's the same M2 topology implemented in three frameworks:
+
+### With LangGraph
+
+```python
+from langgraph.graph import StateGraph, END
+
+graph = StateGraph(State)
+graph.add_node("supervisor", supervisor_node)  # Hymoex Supervisor role
+graph.add_node("legal", legal_expert)          # Hymoex Expert role
+graph.add_node("tech", tech_expert)
+graph.add_node("billing", billing_expert)
+# ... conditional edges for routing
+```
+
+### With CrewAI
+
+```python
+from crewai import Agent, Crew
+
+crew = Crew(
+    agents=[legal_agent, tech_agent, billing_agent],
+    process="hierarchical",   # Hymoex Supervisor pattern
+    manager_llm="gpt-4o-mini",
+)
+```
+
+### With Pydantic AI
+
+```python
+from pydantic_ai import Agent
+
+supervisor = Agent("openai:gpt-4o-mini", system_prompt="Route to the right expert.")
+legal = Agent("openai:gpt-4o-mini", system_prompt="You are a legal expert.")
+# ... supervisor routes, then calls the selected expert
+```
+
+See `packages/examples/frameworks/` for complete runnable examples per framework.
+
+## Auto-modality selection
+
+| Expert count | Modality selected |
+|---|---|
+| k ≤ 2 | M1 -- One-Line MoE |
+| 3-5 | M2 -- One-Line Supervisor |
+| > 5 | M3 -- MoE MultiLine |
+
+## Next steps
+
+- [Architecture Overview](/docs/architecture/overview) -- understand the design
+- [Deployment Modalities](/docs/architecture/modalities) -- when to use M1 vs M2 vs M3
+- [Migration Guide](/docs/guides/migration) -- scale your system progressively

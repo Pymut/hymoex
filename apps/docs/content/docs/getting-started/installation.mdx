@@ -1,0 +1,79 @@
+---
+title: Installation
+description: Set up the Hymoex type definitions and configure your development environment.
+---
+
+## Prerequisites
+
+- Python 3.10 or higher
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- Your preferred agent framework (LangGraph, CrewAI, Pydantic AI, etc.)
+
+## Clone and install
+
+```bash
+git clone https://github.com/Pymut/hymoex.git
+cd hymoex/packages/hymoex-python
+uv sync
+```
+
+Or with pip:
+
+```bash
+cd packages/hymoex-python
+pip install -e .
+```
+
+This installs the Hymoex type definitions (Pydantic models for taxonomy, modalities, protocols). It does **not** install any agent framework — you choose and install your own.
+
+## Install your framework
+
+Hymoex is a paradigm — you apply its patterns using your preferred framework:
+
+```bash
+# Pick one (or more)
+pip install langgraph langchain-openai    # LangGraph
+pip install crewai                        # CrewAI
+pip install pydantic-ai                   # Pydantic AI
+pip install pyautogen                     # AutoGen
+pip install openai-swarm                  # OpenAI Swarm
+```
+
+## Verify installation
+
+```python
+import hymoex
+print(hymoex.__version__)  # 0.1.0
+
+from hymoex import ExpertSpec, ManagerSpec, OneLineSupervisor, auto_select_modality
+print("Ready to design architectures")
+```
+
+## Project layout
+
+```
+packages/
+  hymoex-python/               # Type definitions (taxonomy, modalities, protocols)
+    src/hymoex/
+      taxonomy/                # Role enum, agent specs (Pydantic models)
+      messaging/               # 7 HIP message types
+      modalities/              # OneLineMoE, OneLineSupervisor, MultiLine
+      moe/                     # Gating algorithm, Rational-Raffle fusion
+      migration/               # Progressive M1 -> M2 -> M3 transformations
+      analysis/                # Topology classification and validation
+    tests/                     # Unit tests
+  examples/
+    architecture/              # Pure Hymoex pattern definitions (M1, M2, M3)
+    frameworks/                # Implementations per framework (7 frameworks x 3 modalities)
+    use-cases/                 # Domain-specific examples
+  research/
+    benchmarks/                # Reproducible benchmarks (Gemini API)
+apps/
+  docs/                        # This documentation site
+  sandbox/                     # Interactive sandbox (CLI, notebooks)
+  skills/                      # Claude Code skill (hymoex-architect)
+```
+
+## Next steps
+
+Continue to the [Quickstart](/docs/getting-started/quickstart) to design your first multi-agent architecture.
