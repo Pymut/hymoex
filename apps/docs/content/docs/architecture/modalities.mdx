@@ -1,0 +1,156 @@
+---
+title: Deployment Modalities
+description: The three deployment modalities in Hymoex -- One-Line MoE, One-Line Supervisor, and MoE MultiLine.
+---
+
+Hymoex defines three deployment modalities. The choice depends on the number of domain experts and the complexity of your workflow.
+
+## M1: One-Line MoE
+
+**Use when:** you have 1-2 domain experts and simple parallel tasks.
+
+**Structure:** `Manager -> Expert(s) -> Executors/Perceivers`
+
+The Manager delegates directly to a small set of Experts via MoE gating. No Supervisor is needed.
+
+```python
+from hymoex import ExpertSpec, ManagerSpec, OneLineMoE, validate_topology
+
+system = OneLineMoE(
+    manager=ManagerSpec(objective="Support"),
+    experts=[
+        ExpertSpec(domain="legal", skills=["contracts"]),
+        ExpertSpec(domain="tech", skills=["diagnostics"]),
+    ],
+)
+
+validation = validate_topology(system)
+config = system.to_config()  # Export as JSON for your framework
+```
+
+### Topology definition
+
+```python
+class OneLineMoE(BaseModel):
+    manager: ManagerSpec
+    experts: list[ExpertSpec]           # min_length=1, max_length=2
+    executors: list[ExecutorSpec]       # optional
+    perceivers: list[PerceiverSpec]     # optional
+```
+
+## M2: One-Line Supervisor
+
+**Use when:** you have 3-5 domain experts and need coordinated workflows with dependency management.
+
+**Structure:** `Manager -> Supervisor -> Expert(s)`
+
+The Supervisor acts as a tactical intermediary. It coordinates expert delegation, manages task dependencies, and selects the highest-confidence response.
+
+```python
+from hymoex import ExpertSpec, ManagerSpec, SupervisorSpec, OneLineSupervisor
+
+system = OneLineSupervisor(
+    manager=ManagerSpec(objective="Support"),
+    supervisor=SupervisorSpec(routing="dependency_aware"),
+    experts=[
+        ExpertSpec(domain="legal", skills=["contracts"]),
+        ExpertSpec(domain="tech", skills=["diagnostics"]),
+        ExpertSpec(domain="billing", skills=["invoicing"]),
+    ],
+)
+```
+
+### Topology definition
+
+```python
+class OneLineSupervisor(BaseModel):
+    manager: ManagerSpec
+    supervisor: SupervisorSpec
+    experts: list[ExpertSpec]           # min_length=3, max_length=5
+    executors: list[ExecutorSpec]       # optional
+    perceivers: list[PerceiverSpec]     # optional
+```
+
+## M3: MoE MultiLine
+
+**Use when:** you have 5+ experts organized into multiple teams, or need enterprise-scale coordination.
+
+**Structure:** `Manager -> Integrator(s) -> Expert Manager -> Team(s)`
+
+This mode introduces two new agent roles:
+
+- **Integrator** -- routes context across domain boundaries and manages SLA budgets
+- **Expert Manager** -- coordinates expert selection across the global pool via MoE gating
+
+Each Team contains a Supervisor, domain Experts, Executors, and Perceivers.
+
+```python
+from hymoex import (
+    ExpertManagerSpec, ExpertSpec, IntegratorSpec,
+    ManagerSpec, SupervisorSpec, MultiLine, Team,
+)
+
+system = MultiLine(
+    manager=ManagerSpec(objective="Enterprise support"),
+    integrators=[IntegratorSpec()],
+    expert_manager=ExpertManagerSpec(),
+    teams=[
+        Team(
+            name="sales",
+            supervisor=SupervisorSpec(routing="dependency_aware"),
+            experts=[
+                ExpertSpec(domain="pricing", skills=["quotes"]),
+                ExpertSpec(domain="crm", skills=["lead_scoring"]),
+            ],
+        ),
+        Team(
+            name="operations",
+            supervisor=SupervisorSpec(routing="dependency_aware"),
+            experts=[
+                ExpertSpec(domain="logistics", skills=["routing"]),
+                ExpertSpec(domain="inventory", skills=["stock_check"]),
+                ExpertSpec(domain="fulfillment", skills=["shipping"]),
+            ],
+        ),
+    ],
+)
+```
+
+### Topology definition
+
+```python
+class Team(BaseModel):
+    name: str
+    supervisor: SupervisorSpec
+    experts: list[ExpertSpec]
+    executors: list[ExecutorSpec]       # optional
+    perceivers: list[PerceiverSpec]     # optional
+
+class MultiLine(BaseModel):
+    manager: ManagerSpec
+    integrators: list[IntegratorSpec]   # min_length=1
+    expert_manager: ExpertManagerSpec
+    teams: list[Team]                   # min_length=1
+```
+
+## Comparison table
+
+| Property | M1 (One-Line MoE) | M2 (One-Line Supervisor) | M3 (MoE MultiLine) |
+|---|---|---|---|
+| Expert count | k ≤ 2 | 3-5 | 5+ |
+| Supervisor | No | Yes | Yes (per team) |
+| Integrator | No | No | Yes |
+| Expert Manager | No | No | Yes |
+| Use case | Simple parallel tasks | Coordinated workflows | Enterprise-scale teams |
+
+## Choosing a modality
+
+Use `auto_select_modality` to determine the right modality based on expert count:
+
+```python
+from hymoex import auto_select_modality
+
+modality = auto_select_modality(experts)  # Returns "m1", "m2", or "m3"
+```
+
+Then implement the topology using your chosen framework. See `packages/examples/frameworks/` for complete examples per framework.
