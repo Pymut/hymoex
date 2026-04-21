@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+title: 'Hymoex: Hybrid Modular Coordinated Experts'
+message: 'If you use this work in your research, please cite it as below.'
+type: software
+authors:
+  - family-names: 'Timana'
+    given-names: 'Joel'
+    email: joel@pymut.ai
+    affiliation: 'Pymut Lab'
+  - family-names: 'Munoz'
+    given-names: 'Diana'
+    email: diana@pymut.ai
+    affiliation: 'Pymut Lab'
+  - family-names: 'Munoz'
+    given-names: 'Alvaro'
+    email: alvaro@pymut.ai
+    affiliation: 'Pymut Lab'
+repository-code: 'https://github.com/Pymut/hymoex'
+abstract: >
+  Hymoex (Hybrid Modular Coordinated Experts) is an architectural paradigm
+  for designing scalable multi-agent systems. It defines a seven-role agent
+  taxonomy, three deployment modalities (One-Line MoE, One-Line Supervisor,
+  MoE MultiLine), a Mixture-of-Experts gating mechanism for expert selection,
+  and progressive migration functions that preserve 100% of existing agent
+  definitions. Hymoex is framework-agnostic — it defines architectural
+  patterns that can be applied using any execution framework (LangGraph,
+  CrewAI, Pydantic AI, AutoGen, OpenAI Swarm, Vercel AI SDK, Mastra).
+keywords:
+  - multi-agent systems
+  - cognitive architecture
+  - mixture of experts
+  - agent architecture
+  - enterprise AI
+  - framework-agnostic
+  - type-safe AI
+license: MIT
+version: 0.1.0
+date-released: '2026-04-20'
