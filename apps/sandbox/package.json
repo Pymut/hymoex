@@ -1,0 +1,11 @@
+{
+  "name": "@hymoex/sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive sandbox for experimenting with the Hymoex architecture",
+  "scripts": {
+    "notebook": "cd notebooks && jupyter lab",
+    "cli": "cd ../.. && uv run python apps/sandbox/cli/main.py",
+    "clean": "echo 'Nothing to clean'"
+  }
+}
