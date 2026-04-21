@@ -57,4 +57,4 @@ Use `-s` to see printed metric output from each test.
 - The `conftest.py` in this directory provides shared fixtures (sample messages, expert factories)
 - The `run_all.py` script parses pytest output to extract key metrics and format them into Table 3
 
-**Made with ❤️ by the Pymut lab**
+**Made with 💚 by the Pymut lab**

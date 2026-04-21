@@ -27,11 +27,11 @@ Hymoex solves four critical problems:
 
 ## Three Modalities
 
-| Modality | Experts | Use Case |
-|----------|---------|----------|
-| **One-Line MoE** | k ≤ 2 | Simple parallel tasks |
-| **One-Line Supervisor** | 3-5 | Coordinated workflows |
-| **MoE MultiLine** | 5+ | Enterprise-scale teams |
+| Modality                | Experts | Use Case               |
+| ----------------------- | ------- | ---------------------- |
+| **One-Line MoE**        | k ≤ 2   | Simple parallel tasks  |
+| **One-Line Supervisor** | 3-5     | Coordinated workflows  |
+| **MoE MultiLine**       | 5+      | Enterprise-scale teams |
 
 ## Quick Start
 
@@ -100,15 +100,15 @@ m3 = migrate_m2_to_m3(m2)
 
 Hymoex is a paradigm, not a library. Use your preferred framework — apply Hymoex patterns:
 
-| Framework | Example | Hymoex Pattern |
-|-----------|---------|----------------|
-| Pydantic AI | [example](packages/examples/frameworks/pydantic-ai/) | M1, M2, M3 — Agent delegation |
-| LangGraph | [example](packages/examples/frameworks/langgraph/) | M1, M2, M3 — StateGraph with sub-graphs |
-| CrewAI | [example](packages/examples/frameworks/crewai/) | M1, M2, M3 — Hierarchical process |
-| AutoGen | [example](packages/examples/frameworks/autogen/) | M1, M2, M3 — Nested GroupChats |
-| OpenAI Swarm | [example](packages/examples/frameworks/openai-swarm/) | M1, M2, M3 — Chained handoffs |
-| Vercel AI SDK | [example](packages/examples/frameworks/vercel-ai-sdk/) | M1, M2, M3 — Nested tool delegation |
-| Mastra | [example](packages/examples/frameworks/mastra/) | M1, M2, M3 — Workflow composition |
+| Framework     | Example                                                | Hymoex Pattern                          |
+| ------------- | ------------------------------------------------------ | --------------------------------------- |
+| Pydantic AI   | [example](packages/examples/frameworks/pydantic-ai/)   | M1, M2, M3 — Agent delegation           |
+| LangGraph     | [example](packages/examples/frameworks/langgraph/)     | M1, M2, M3 — StateGraph with sub-graphs |
+| CrewAI        | [example](packages/examples/frameworks/crewai/)        | M1, M2, M3 — Hierarchical process       |
+| AutoGen       | [example](packages/examples/frameworks/autogen/)       | M1, M2, M3 — Nested GroupChats          |
+| OpenAI Swarm  | [example](packages/examples/frameworks/openai-swarm/)  | M1, M2, M3 — Chained handoffs           |
+| Vercel AI SDK | [example](packages/examples/frameworks/vercel-ai-sdk/) | M1, M2, M3 — Nested tool delegation     |
+| Mastra        | [example](packages/examples/frameworks/mastra/)        | M1, M2, M3 — Workflow composition       |
 
 ## Repository Structure
 
@@ -168,4 +168,4 @@ MIT — see [LICENSE](LICENSE).
 
 </div>
 
-**Made with ❤️ by the Pymut lab**
+**Made with 💚 by the Pymut lab**

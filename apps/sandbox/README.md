@@ -31,11 +31,10 @@ sandbox/
 
 ## Scenarios
 
-| Scenario | Modality | Experts | What it does |
-|----------|----------|---------|-------------|
-| `customer_support.py` | M2 | Legal, Tech, Billing | Routes customer queries to the right expert |
-| `content_pipeline.py` | M1 | Writer, Editor | Parallel content generation |
-| `enterprise.py` | M3 | Multi-team | Progressive migration M1 → M2 → M3 |
+| Scenario              | Modality | Experts              | What it does                                |
+| --------------------- | -------- | -------------------- | ------------------------------------------- |
+| `customer_support.py` | M2       | Legal, Tech, Billing | Routes customer queries to the right expert |
+| `content_pipeline.py` | M1       | Writer, Editor       | Parallel content generation                 |
+| `enterprise.py`       | M3       | Multi-team           | Progressive migration M1 → M2 → M3          |
 
-
-**Made with ❤️ by the Pymut lab**
+**Made with 💚 by the Pymut lab**

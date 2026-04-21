@@ -7,6 +7,7 @@
 ## What is This?
 
 `/hymoex-architect` is a Claude Code skill that helps you:
+
 - Understand Hymoex architectural patterns
 - Map business problems to Hymoex components
 - Choose the right architecture for your use case
@@ -30,6 +31,7 @@
 ### What You Get
 
 The skill will:
+
 1. Analyze your requirements
 2. Recommend architectural options (with trade-offs)
 3. Generate pseudocode and technical specifications
@@ -43,6 +45,7 @@ The skill will:
 ### 1. Hymoex is an Architecture, Not a Framework
 
 You can use Hymoex patterns with:
+
 - Pydantic AI ⭐ (Recommended)
 - LangGraph
 - CrewAI
@@ -66,14 +69,17 @@ Start simple (One-Line MoE) → Grow as needed (Supervisor → MultiLine)
 ## Architecture Modalities
 
 ### One-Line MoE
+
 - **Best for:** 1-2 experts, simple tasks
 - **Structure:** Manager → Experts (direct)
 
 ### One-Line Supervisor
+
 - **Best for:** 3-5 experts, workflows
 - **Structure:** Manager → Supervisor → Experts
 
 ### MoE MultiLine
+
 - **Best for:** 6+ experts, distributed teams
 - **Structure:** Integrator → Expert Managers → Experts
 
@@ -112,11 +118,13 @@ hymoex-architect/
 ### Example 1: Simple System
 
 **You:**
+
 ```
 /hymoex-architect "Customer support with technical and billing experts"
 ```
 
 **Skill:**
+
 ```
 📐 Analyzing Requirements...
 
@@ -132,11 +140,13 @@ Based on your description:
 ### Example 2: Complex System
 
 **You:**
+
 ```
 /hymoex-architect "Research system with 8 experts across 3 teams"
 ```
 
 **Skill:**
+
 ```
 📐 Analyzing Requirements...
 
@@ -157,11 +167,13 @@ Option C: Hybrid approach
 ### Example 3: Existing Framework
 
 **You:**
+
 ```
 /hymoex-architect "I have LangGraph code. How do I apply Hymoex?"
 ```
 
 **Skill:**
+
 ```
 📐 Analyzing Your Situation...
 
@@ -184,6 +196,7 @@ Path 1: Keep LangGraph, Think Hymoex (Recommended)
 ### Recommended Stack: Pydantic AI + Hymoex
 
 **Why:**
+
 - Type-safe agents (Pydantic AI)
 - Architectural organization (Hymoex)
 - Fast, lightweight, production-ready
@@ -237,6 +250,7 @@ All mappings follow the same philosophy:
 ## Getting Help
 
 During skill execution, you can:
+
 - Ask for clarification: "Explain Manager vs Supervisor"
 - Request alternatives: "Show me other approaches"
 - Seek trade-offs: "What are pros/cons of MultiLine?"
@@ -277,4 +291,4 @@ Same as Hymoex project.
 - **Recommended Stack**: `framework-mappings/pydantic-ai-mapping.md`
 - **Quick Reference**: `reference/component-reference.md`
 
-**Made with ❤️ by the Pymut lab**
+**Made with 💚 by the Pymut lab**

@@ -40,11 +40,11 @@ config = system.to_config()  # Export as JSON for your framework
 
 ## Three Modalities
 
-| Modality | Experts | Class | Use Case |
-|----------|---------|-------|----------|
-| One-Line MoE | k ≤ 2 | `OneLineMoE` | Simple parallel tasks |
-| One-Line Supervisor | 3-5 | `OneLineSupervisor` | Coordinated workflows |
-| MoE MultiLine | 5+ | `MultiLine` | Enterprise-scale teams |
+| Modality            | Experts | Class               | Use Case               |
+| ------------------- | ------- | ------------------- | ---------------------- |
+| One-Line MoE        | k ≤ 2   | `OneLineMoE`        | Simple parallel tasks  |
+| One-Line Supervisor | 3-5     | `OneLineSupervisor` | Coordinated workflows  |
+| MoE MultiLine       | 5+      | `MultiLine`         | Enterprise-scale teams |
 
 ## Progressive Migration
 
@@ -89,4 +89,4 @@ src/hymoex/
 
 MIT
 
-**Made with ❤️ by the Pymut lab**
+**Made with 💚 by the Pymut lab**
