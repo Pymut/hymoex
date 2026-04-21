@@ -1,0 +1,185 @@
+---
+title: Agents API
+description: Complete API reference for all seven Hymoex agent classes.
+---
+
+All agents extend `BaseAgent` and implement the `AgentProtocol`. Each agent has a fixed `Role`, a unique ID, and an optional LLM provider.
+
+## BaseAgent
+
+```python
+from hymoex import BaseAgent
+
+class BaseAgent(BaseModel):
+    id: str                      # Auto-generated 8-char hex UUID
+    role: Role                   # One of the 7 roles
+    config: dict[str, Any]       # Arbitrary configuration dict
+    llm: LLMProvider | None      # Optional LLM backend
+
+    async def process(self, message: Any) -> Any:
+        """Process a message. Subclasses must implement this."""
+        ...
+```
+
+## Role enum
+
+```python
+from hymoex import Role
+
+class Role(str, Enum):
+    MANAGER = "manager"
+    INTEGRATOR = "integrator"
+    EXPERT_MANAGER = "expert_manager"
+    SUPERVISOR = "supervisor"
+    EXPERT = "expert"
+    EXECUTOR = "executor"
+    PERCEIVER = "perceiver"
+```
+
+## Manager
+
+Sets global objectives and determines routing strategy.
+
+```python
+from hymoex import Manager
+
+manager = Manager(
+    objective="Customer support",    # Global objective description
+    strategy="route_by_domain",      # Routing strategy label
+    system_prompt="...",             # Custom system prompt for LLM
+    llm=provider,                   # Optional LLM provider
+)
+
+# Input:  MsgPacket
+# Output: ContextEnvelope
+envelope = await manager.process(msg_packet)
+```
+
+**Fields:**
+- `objective: str` -- description of the system's goal
+- `strategy: str` -- routing strategy label (default: `"default"`)
+- `system_prompt: str` -- system prompt sent to the LLM when attached
+
+## Supervisor
+
+Coordinates expert delegation and manages task dependencies.
+
+```python
+from hymoex import Supervisor
+
+supervisor = Supervisor(
+    routing="dependency_aware",  # Routing strategy
+)
+
+# Input:  ExpertPayload or list[ExpertPayload]
+# Output: ExpertPayload (highest confidence)
+result = await supervisor.process(expert_payloads)
+```
+
+**Fields:**
+- `routing: str` -- routing strategy label (default: `"dependency_aware"`)
+
+**Behavior:** When given a list of `ExpertPayload`, returns the one with the highest confidence score.
+
+## Expert
+
+Provides domain-specific knowledge and resolves specialized queries.
+
+```python
+from hymoex import Expert
+
+expert = Expert(
+    domain="legal",                   # Domain of expertise
+    skills=["contract_review"],       # List of skill labels
+    system_prompt="...",              # Custom prompt (auto-generated if empty)
+    llm=provider,                    # Optional LLM provider
+)
+
+# Input:  DecisionRequest
+# Output: ExpertPayload
+payload = await expert.process(decision_request)
+```
+
+**Fields:**
+- `domain: str` -- domain label (default: `"general"`)
+- `skills: list[str]` -- list of skill descriptors
+- `system_prompt: str` -- custom system prompt; if empty, one is auto-generated from domain and skills
+
+**Output fields:**
+- `reply_draft: str` -- the expert's response text
+- `confidence: float` -- 0.0 to 1.0 confidence score
+- `expert_id: str` -- the expert's unique ID
+- `tokens_used: int` -- token count for cost tracking
+
+## Executor
+
+Performs external actions (API calls, document generation, payments).
+
+```python
+from hymoex import Executor
+
+executor = Executor()
+
+# Input:  ExecCommand
+# Output: ExecReceipt
+receipt = await executor.process(exec_command)
+```
+
+All executors are idempotent -- duplicate commands with the same `idempotency_key` are ignored and return `next_action="already_processed"`.
+
+## Perceiver
+
+Captures environmental telemetry and feeds real-time feedback loops.
+
+```python
+from hymoex import Perceiver
+
+perceiver = Perceiver()
+
+# Input:  ExecReceipt or Any
+# Output: Telemetry
+telemetry = await perceiver.process(exec_receipt)
+```
+
+**Behavior:** Converts execution results into telemetry data with sentiment analysis (positive for success, negative for failure).
+
+## Integrator
+
+Routes context across domain boundaries and manages SLA budgets. Used only in M3 (MultiLine) deployments.
+
+```python
+from hymoex import Integrator
+
+integrator = Integrator(
+    routing_overhead_ms=50.0,  # SLA budget deducted per routing hop
+)
+
+# Input:  ContextEnvelope
+# Output: ContextEnvelope (with reduced SLA budget)
+envelope = await integrator.process(context_envelope)
+```
+
+**Fields:**
+- `routing_overhead_ms: float` -- milliseconds deducted from SLA budget per hop (default: `50.0`)
+
+## ExpertManager
+
+Orchestrates MoE gating across expert pools and fuses responses. Used only in M3 (MultiLine) deployments.
+
+```python
+from hymoex import ExpertManager, Expert, GatingConfig
+
+expert_manager = ExpertManager(
+    experts=[expert_a, expert_b, expert_c],
+    gating_config=GatingConfig(top_k=2, temperature=1.0),
+)
+
+# Input:  DecisionRequest
+# Output: ExpertPayload (fused via Rational-Raffle)
+result = await expert_manager.process(decision_request)
+```
+
+**Fields:**
+- `experts: list[Expert]` -- the pool of experts to gate over
+- `gating_config: GatingConfig` -- MoE gating configuration
+- `expert_weights: dict[str, list[float]]` -- weight vectors per expert (auto-initialized if empty)
