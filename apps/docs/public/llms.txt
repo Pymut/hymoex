@@ -1,0 +1,21 @@
+# Hymoex
+
+> Hybrid Modular Coordinated Experts — A cognitive architecture for scalable multi-agent systems.
+
+## Docs
+
+- [Installation](/docs/getting-started/installation): Installation and setup
+- [Quickstart](/docs/getting-started/quickstart): Build your first multi-agent system
+- [Architecture Overview](/docs/architecture/overview): The 7-role agent taxonomy and hierarchical design
+- [Deployment Modalities](/docs/architecture/modalities): One-Line MoE, One-Line Supervisor, and MoE MultiLine
+- [MoE Gating](/docs/architecture/moe-gating): Softmax gating and Rational-Raffle fusion
+- [Agents API](/docs/api-reference/agents): Complete reference for all seven agent classes
+- [Messaging API](/docs/api-reference/messaging): The 7 HIP message types for inter-agent communication
+- [Modalities API](/docs/api-reference/modalities): Modality classes, migration functions, and auto-selection
+- [Migration Guide](/docs/guides/migration): Scale progressively from M1 to M2 to M3
+- [LLM Providers](/docs/guides/llm-providers): Configure OpenAI, Anthropic, Mock, and custom providers
+
+## Links
+
+- GitHub: https://github.com/Pymut/hymoex
+- Paper: https://github.com/Pymut/hymoex/tree/main/packages/research/papers/hymoex-cognitive-architecture
