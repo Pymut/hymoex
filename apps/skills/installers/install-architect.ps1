@@ -6,7 +6,7 @@
 # - Cursor
 # - Other AI coding agents
 #
-# Usage: irm https://raw.githubusercontent.com/Pymut/hymoex/main/apps/skills/installers/install-architect.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/Pymut/hymoex/master/apps/skills/installers/install-architect.ps1 | iex
 ################################################################################
 
 $ErrorActionPreference = "Stop"

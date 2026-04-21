@@ -18,7 +18,7 @@ Interactive architectural guidance for building multi-agent systems using Hymoex
 
 **Quick Install:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Pymut/hymoex/main/apps/skills/installers/install-architect.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Pymut/hymoex/master/apps/skills/installers/install-architect.sh | bash
 ```
 
 ---

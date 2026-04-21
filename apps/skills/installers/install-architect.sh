@@ -8,7 +8,7 @@
 # - Cursor
 # - Other AI coding agents
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/Pymut/hymoex/main/apps/skills/installers/install-architect.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/Pymut/hymoex/master/apps/skills/installers/install-architect.sh | bash
 ################################################################################
 
 set -e
