@@ -1,0 +1,6 @@
+{
+  "extraPaths": ["packages/hymoex-python/src"],
+  "pythonVersion": "3.12",
+  "venvPath": "packages/hymoex-python",
+  "venv": ".venv"
+}
