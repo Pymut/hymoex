@@ -148,7 +148,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.
 ## Citation
 
 ```bibtex
-@software{timana2026hymoex,
+@software{pymut2026hymoex,
   title = {Hymoex: A Hybrid Modular Cognitive Architecture for Scalable Multi-Agent Expert Coordination},
   author = {Timana, Joel and Munoz, Diana and Munoz, Alvaro},
   year = {2026},
