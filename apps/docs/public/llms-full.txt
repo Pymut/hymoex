@@ -1,0 +1,804 @@
+# Hymoex
+
+> Hybrid Modular Coordinated Experts — A cognitive architecture for scalable multi-agent systems.
+
+---
+
+# Installation
+
+Install the Hymoex type definitions and configure your development environment.
+
+## Prerequisites
+
+- Python 3.10 or higher
+- uv (recommended) or pip
+
+## Install from the monorepo
+
+```
+cd packages/hymoex-python
+uv sync
+```
+
+## Install with pip
+
+```
+# Core type definitions (pydantic v2 + typing-extensions)
+pip install -e .
+
+# With all optional framework dependencies (Pydantic AI, LangGraph, CrewAI, AutoGen)
+pip install -e ".[all]"
+
+# Development tools (pytest, ruff, mypy, pre-commit)
+pip install -e ".[dev]"
+```
+
+## Optional LLM providers
+
+Hymoex uses a provider abstraction so you can plug in any LLM backend. Install the SDK for the provider you want to use:
+
+```
+# OpenAI
+pip install openai
+
+# Anthropic
+pip install anthropic
+```
+
+Set the corresponding environment variable:
+
+```
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+## Verify installation
+
+```python
+import hymoex
+print(hymoex.__version__)  # 0.1.0
+```
+
+## Project layout
+
+```
+packages/hymoex-python/       # type definitions (pip install hymoex)
+  src/hymoex/
+    protocols/                 # Role enum, AgentProtocol, SignalVector
+    messaging/                 # 7 HIP message types (pydantic v2)
+    agents/                    # Manager, Supervisor, Expert, Executor, Perceiver, Integrator, ExpertManager
+    moe/                       # Softmax gating, Rational-Raffle fusion
+    modalities/                # OneLineMoE, OneLineSupervisor, MultiLine, migration
+    analysis/                  # Topology classification and validation
+    providers/                 # LLM abstraction (Mock, OpenAI, Anthropic)
+packages/research/             # Benchmarks and paper
+apps/sandbox/                  # Interactive sandbox (CLI, notebooks)
+apps/docs/                     # Documentation site
+```
+
+---
+
+# Quickstart
+
+Build and run your first Hymoex multi-agent system in under five minutes.
+
+## Minimal example
+
+```python
+import asyncio
+from hymoex import Manager, Supervisor, Expert, OneLineSupervisor, MsgPacket
+
+async def main():
+    manager = Manager(objective="Customer support", strategy="route_by_domain")
+    supervisor = Supervisor(routing="dependency_aware")
+
+    legal = Expert(domain="legal", skills=["contract_review"])
+    tech = Expert(domain="tech", skills=["diagnostics"])
+    billing = Expert(domain="billing", skills=["invoicing"])
+
+    system = OneLineSupervisor(
+        manager=manager,
+        supervisor=supervisor,
+        experts=[legal, tech, billing],
+    )
+
+    message = MsgPacket(channel="web", customer_id="c1", payload="Invoice mismatch")
+    config = system.to_config()  # Export topology as JSON for your framework
+    print(result.reply_draft)
+
+asyncio.run(main())
+```
+
+## Auto-modality selection
+
+Use auto_select_modality to determine the right modality based on expert count:
+
+```python
+from hymoex import ExpertSpec, auto_select_modality
+
+experts = [
+    ExpertSpec(domain="legal", skills=["contracts"]),
+    ExpertSpec(domain="tech", skills=["diagnostics"]),
+    ExpertSpec(domain="billing", skills=["invoicing"]),
+    ExpertSpec(domain="hr", skills=["onboarding"]),
+]
+
+modality = auto_select_modality(experts)  # Returns "m1", "m2", or "m3"
+```
+
+auto_select_modality rules:
+- k <= 2: M1 (One-Line MoE)
+- 3-5: M2 (One-Line Supervisor)
+- > 5: M3 (MoE MultiLine)
+
+## LLM integration
+
+Hymoex does not manage LLM calls — your chosen framework handles execution. Each framework has its own LLM configuration:
+
+- Pydantic AI: Agent("openai:gpt-4o-mini", ...)
+- LangGraph: ChatOpenAI(model="gpt-4o-mini")
+- CrewAI: Agent(llm="gpt-4o-mini", ...)
+- AutoGen: AssistantAgent(llm_config={"model": "gpt-4o-mini"})
+
+See packages/examples/frameworks/ for complete examples per framework.
+
+## Topology output
+
+```python
+config = system.to_config()  # Export topology as JSON for your framework
+
+result.reply_draft   # The expert's response text
+result.confidence    # 0.0-1.0 confidence score
+result.expert_id     # Which expert produced the response
+result.tokens_used   # Token count for cost tracking
+```
+
+---
+
+# Architecture Overview
+
+Hymoex (Hybrid Modular Coordinated Experts) is a cognitive architecture for building scalable multi-agent systems. It combines Mixture-of-Experts (MoE) gating with a hierarchical agent taxonomy and progressive deployment modalities.
+
+## Core principles
+
+- Clean Architecture: each layer has clearly defined responsibilities
+- SOLID principles: every agent fulfills a single role; the system is extensible without restructuring
+- Asynchronous by default: all agent processing is async, enabling parallel expert execution
+- Framework-agnostic: provider abstraction supports OpenAI, Anthropic, and patterns for Pydantic AI, LangGraph, CrewAI, and AutoGen
+
+## The 7-role agent taxonomy
+
+| Role           | Class          | Layer        | Responsibility                                              |
+|----------------|----------------|--------------|-------------------------------------------------------------|
+| Manager        | Manager        | Strategic    | Sets global objectives, determines routing strategy         |
+| Integrator     | Integrator     | Coordination | Routes context across domains, manages SLA budgets (M3)     |
+| Expert Manager | ExpertManager  | Coordination | Orchestrates MoE gating across expert pools (M3)            |
+| Supervisor     | Supervisor     | Tactical     | Coordinates expert delegation, manages task dependencies    |
+| Expert         | Expert         | Knowledge    | Provides domain-specific knowledge                          |
+| Executor       | Executor       | Operational  | Performs external actions (API calls, payments)              |
+| Perceiver      | Perceiver      | Operational  | Captures environmental telemetry and feedback loops         |
+
+## Agent base class
+
+All agents extend BaseAgent, a Pydantic v2 model:
+
+```python
+class BaseAgent(BaseModel):
+    id: str           # Auto-generated 8-char hex
+    role: Role        # One of the 7 roles
+    config: dict      # Arbitrary configuration
+    llm: LLMProvider | None  # Optional LLM backend
+
+    async def process(self, message: Any) -> Any: ...
+```
+
+## Communication: the HIP protocol
+
+Agents communicate via the Hymoex Interchange Protocol (HIP), which defines 7 typed message models (all Pydantic v2):
+
+- MsgPacket: Raw user input with channel metadata
+- ContextEnvelope: Enriched packet with routing state and SLA budget
+- DecisionRequest: Signal vector plus context for expert selection
+- ExpertPayload: Expert response with confidence and audit trail
+- ExecCommand: Typed action command (CRM update, payment, etc.)
+- ExecReceipt: Execution result with latency and status
+- Telemetry: Real-time feedback (sentiment, delivery status)
+
+## Three deployment modalities
+
+M1: Manager -> Expert(s) -> Executors/Perceivers          (k <= 2 experts)
+M2: Manager -> Supervisor -> Expert(s)                     (3-5 experts)
+M3: Manager -> Integrators -> Expert Manager -> Teams      (5+ experts)
+
+## MoE gating
+
+The Mixture-of-Experts gate uses a softmax function: g(s) = softmax(Ws + b)
+
+Where s is a composite signal vector composed of intent embeddings, emotion vectors, stage flags, and lead scores. The gate selects the top-k experts and routes the request to them in parallel.
+
+## Progressive migration
+
+Systems can scale from M1 to M3 without rewriting agents:
+
+```python
+from hymoex import migrate_m1_to_m2, migrate_m2_to_m3
+
+m2 = migrate_m1_to_m2(m1, additional_experts=[expert_c])
+m3 = migrate_m2_to_m3(m2)
+```
+
+---
+
+# Deployment Modalities
+
+Hymoex supports three deployment modalities. The choice depends on the number of domain experts and the complexity of your workflow.
+
+## M1: One-Line MoE
+
+Use when you have 1-2 domain experts and simple parallel tasks.
+
+Structure: Manager -> Expert(s) -> Executors/Perceivers
+
+```python
+from hymoex import Manager, Expert, OneLineMoE, MsgPacket
+
+system = OneLineMoE(
+    manager=Manager(objective="Support"),
+    experts=[
+        Expert(domain="legal", skills=["contracts"]),
+        Expert(domain="tech", skills=["diagnostics"]),
+    ],
+)
+
+validation = validate_topology(
+    MsgPacket(channel="web", customer_id="c1", payload="Contract question")
+)
+```
+
+Class signature:
+- manager: Manager
+- experts: list[Expert] (min 1, max 2)
+- executors: list[Executor] (optional)
+- perceivers: list[Perceiver] (optional)
+- gating_config: GatingConfig
+
+## M2: One-Line Supervisor
+
+Use when you have 3-5 domain experts and need coordinated workflows.
+
+Structure: Manager -> Supervisor -> Expert(s)
+
+```python
+from hymoex import Manager, Supervisor, Expert, OneLineSupervisor, MsgPacket
+
+system = OneLineSupervisor(
+    manager=Manager(objective="Support"),
+    supervisor=Supervisor(routing="dependency_aware"),
+    experts=[
+        Expert(domain="legal", skills=["contracts"]),
+        Expert(domain="tech", skills=["diagnostics"]),
+        Expert(domain="billing", skills=["invoicing"]),
+    ],
+)
+
+validation = validate_topology(
+    MsgPacket(channel="web", customer_id="c1", payload="Invoice question")
+)
+```
+
+Class signature:
+- manager: Manager
+- supervisor: Supervisor
+- experts: list[Expert] (min 3, max 5)
+- executors: list[Executor] (optional)
+- perceivers: list[Perceiver] (optional)
+- gating_config: GatingConfig
+
+## M3: MoE MultiLine
+
+Use when you have 5+ experts organized into multiple teams.
+
+Structure: Manager -> Integrator(s) -> Expert Manager -> Team(s)
+
+Introduces Integrator (routes context across domains) and Expert Manager (coordinates expert selection across the global pool).
+
+```python
+from hymoex import (
+    Manager, Integrator, ExpertManager, Supervisor,
+    Expert, MultiLine, Team, MsgPacket,
+)
+
+system = MultiLine(
+    manager=Manager(objective="Enterprise support"),
+    integrators=[Integrator()],
+    expert_manager=ExpertManager(),
+    teams=[
+        Team(
+            name="sales",
+            supervisor=Supervisor(routing="dependency_aware"),
+            experts=[
+                Expert(domain="pricing", skills=["quotes"]),
+                Expert(domain="crm", skills=["lead_scoring"]),
+            ],
+        ),
+        Team(
+            name="operations",
+            supervisor=Supervisor(routing="dependency_aware"),
+            experts=[
+                Expert(domain="logistics", skills=["routing"]),
+                Expert(domain="inventory", skills=["stock_check"]),
+                Expert(domain="fulfillment", skills=["shipping"]),
+            ],
+        ),
+    ],
+)
+```
+
+## Comparison
+
+| Property       | M1              | M2                   | M3               |
+|----------------|-----------------|----------------------|-------------------|
+| Expert count   | k <= 2          | 3-5                  | 5+                |
+| Supervisor     | No              | Yes                  | Yes (per team)    |
+| Integrator     | No              | No                   | Yes               |
+| Expert Manager | No              | No                   | Yes               |
+| Use case       | Simple parallel | Coordinated workflows | Enterprise-scale  |
+
+---
+
+# MoE Gating
+
+The MoE (Mixture-of-Experts) gating mechanism selects the most relevant experts for a given request and fuses their responses.
+
+## Pipeline overview
+
+1. Signal extraction: build a composite signal vector from the request
+2. Softmax scoring: compute selection probabilities for each expert
+3. Top-k selection: pick the k highest-scoring experts
+
+After the selected experts process the request in parallel, their responses are fused using the Rational-Raffle mechanism.
+
+## Signal vector
+
+```python
+class SignalVector(BaseModel):
+    intent_embedding: list[float]
+    emotion_embedding: list[float]
+    stage_flag: list[float]
+    lead_score: float
+
+    def to_vector(self) -> list[float]:
+        return self.intent_embedding + self.emotion_embedding + self.stage_flag + [self.lead_score]
+```
+
+## Softmax gate
+
+g(s) = softmax(Ws + b)
+
+Where s is the signal vector, W is the expert weight matrix, b is an optional bias.
+
+```python
+from hymoex.moe.gate import softmax_gate, GatingConfig
+
+config = GatingConfig(temperature=1.0, top_k=2)
+scores = softmax_gate(signal, expert_weights, config=config)
+```
+
+## GatingConfig
+
+```python
+class GatingConfig(BaseModel):
+    temperature: float = 1.0          # Softmax temperature
+    top_k: int = 2                    # Number of experts to select
+    low_temperature: float = 0.5      # Temperature under SLA pressure
+    sla_threshold_ms: float = 500.0   # Budget threshold for temperature switch
+```
+
+## Dynamic temperature
+
+When SLA budget is running low, the gate switches to low_temperature for sharper expert selection.
+
+## Convenience function
+
+```python
+from hymoex.moe.gate import gate_experts
+
+result = gate_experts(
+    request=decision_request,
+    expert_weights={"expert_a": [1.0], "expert_b": [0.5]},
+    config=GatingConfig(top_k=2),
+)
+
+result.selected_experts  # ["expert_a", "expert_b"]
+result.weights           # {"expert_a": 0.72, "expert_b": 0.28}
+```
+
+## Rational-Raffle fusion
+
+score(r_i) = alpha_i * relevance(r_i, m) * confidence(r_i)
+
+Where alpha_i is the gating weight, relevance is Jaccard similarity, and confidence is the expert's self-reported confidence.
+
+```python
+from hymoex.moe.fusioner import rational_raffle, FusionConfig
+
+result = rational_raffle(
+    responses=[(payload_a, 0.72), (payload_b, 0.28)],
+    request=decision_request,
+    config=FusionConfig(threshold=0.3),
+)
+
+result.base_response      # Highest-scoring ExpertPayload
+result.augmented_content  # Additional responses above threshold
+result.scores             # Score per expert
+result.reason_vector_hash # SHA-256 audit trail
+```
+
+---
+
+# Agents API
+
+All agents extend BaseAgent and implement the AgentProtocol. Each agent has a fixed Role, a unique ID, and an optional LLM provider.
+
+## BaseAgent
+
+```python
+class BaseAgent(BaseModel):
+    id: str                      # Auto-generated 8-char hex UUID
+    role: Role                   # One of the 7 roles
+    config: dict[str, Any]       # Arbitrary configuration
+    llm: LLMProvider | None      # Optional LLM backend
+
+    async def process(self, message: Any) -> Any: ...
+```
+
+## Role enum
+
+```python
+class Role(str, Enum):
+    MANAGER = "manager"
+    INTEGRATOR = "integrator"
+    EXPERT_MANAGER = "expert_manager"
+    SUPERVISOR = "supervisor"
+    EXPERT = "expert"
+    EXECUTOR = "executor"
+    PERCEIVER = "perceiver"
+```
+
+## Manager
+
+Sets global objectives and determines routing strategy.
+
+- objective: str -- description of the system's goal
+- strategy: str -- routing strategy label (default: "default")
+- system_prompt: str -- system prompt sent to the LLM when attached
+- Input: MsgPacket -> Output: ContextEnvelope
+
+## Supervisor
+
+Coordinates expert delegation and manages task dependencies.
+
+- routing: str -- routing strategy label (default: "dependency_aware")
+- Input: ExpertPayload or list[ExpertPayload] -> Output: ExpertPayload (highest confidence)
+
+## Expert
+
+Provides domain-specific knowledge and resolves specialized queries.
+
+- domain: str -- domain label (default: "general")
+- skills: list[str] -- list of skill descriptors
+- system_prompt: str -- custom system prompt (auto-generated if empty)
+- Input: DecisionRequest -> Output: ExpertPayload
+
+Output fields: reply_draft, confidence (0.0-1.0), expert_id, tokens_used
+
+## Executor
+
+Performs external actions (API calls, document generation, payments). Idempotent via idempotency_key.
+
+- Input: ExecCommand -> Output: ExecReceipt
+
+## Perceiver
+
+Captures environmental telemetry and feeds real-time feedback loops.
+
+- Input: ExecReceipt or Any -> Output: Telemetry
+
+## Integrator (M3 only)
+
+Routes context across domain boundaries and manages SLA budgets.
+
+- routing_overhead_ms: float -- ms deducted from SLA budget per hop (default: 50.0)
+- Input: ContextEnvelope -> Output: ContextEnvelope
+
+## ExpertManager (M3 only)
+
+Orchestrates MoE gating across expert pools and fuses responses via Rational-Raffle.
+
+- experts: list[Expert] -- the pool of experts to gate over
+- gating_config: GatingConfig -- MoE gating configuration
+- Input: DecisionRequest -> Output: ExpertPayload
+
+---
+
+# Messaging API
+
+All inter-agent communication uses the HIP (Hymoex Interchange Protocol) -- 7 typed message models (Pydantic v2).
+
+## MsgPacket
+
+Raw user input with channel metadata.
+
+- channel: "whatsapp" | "web" | "voice"
+- customer_id: str
+- payload: str (the user's message text)
+- lang: str = "en"
+- latency: float = 0.0
+- timestamp: datetime (auto-set)
+
+## ContextEnvelope
+
+Enriched packet with routing state, produced by the Manager.
+
+- msg_packet: MsgPacket
+- lead_stage: str = "unknown"
+- sla_budget: float = 5000.0
+- interaction_id: UUID (auto-generated)
+- trace_context: str = ""
+
+## DecisionRequest
+
+Signal vector plus context for MoE gating.
+
+- intent_embedding: list[float]
+- emotion_vector: list[float]
+- stage_flag: list[float]
+- lead_score: float = 0.0
+- context: ContextEnvelope | None
+
+## ExpertPayload
+
+Expert response with confidence and audit trail.
+
+- reply_draft: str
+- confidence: float (0.0-1.0)
+- reason_vector: str (SHA-256 hash from fusion)
+- expert_id: str
+- tokens_used: int
+
+## ExecCommand
+
+Typed action command sent to Executors.
+
+- type: "crm_update" | "doc_generate" | "payment" | "calendar"
+- params: dict[str, Any]
+- callback_url: str = ""
+- idempotency_key: UUID (auto-generated)
+
+## ExecReceipt
+
+Execution result returned by Executors.
+
+- status: "success" | "failure" | "pending"
+- latency: float
+- error_code: str | None
+- next_action: str | None
+
+## Telemetry
+
+Real-time feedback produced by Perceivers.
+
+- sentiment: float (-1.0 to 1.0)
+- delivery_status: str
+- action_outcome: str
+- team_id: str
+- stage: str
+- timestamp: datetime (auto-set)
+
+## HIPMessage type alias
+
+Union type covering all 7 message types:
+MsgPacket | ContextEnvelope | DecisionRequest | ExpertPayload | ExecCommand | ExecReceipt | Telemetry
+
+---
+
+# Modalities API
+
+## OneLineMoE (M1)
+
+For simple systems with k <= 2 domain experts.
+
+Pipeline: Manager -> Gate -> Experts -> Fuse
+
+```python
+class OneLineMoE(BaseModel):
+    manager: Manager
+    experts: list[Expert]           # min 1, max 2
+    executors: list[Executor]       # default: []
+    perceivers: list[Perceiver]     # default: []
+    gating_config: GatingConfig
+
+    async def run(self, message: MsgPacket) -> ExpertPayload: ...
+```
+
+## OneLineSupervisor (M2)
+
+For coordinated systems with 3-5 domain experts.
+
+Pipeline: Manager -> Gate -> Experts -> Fuse -> Supervise
+
+```python
+class OneLineSupervisor(BaseModel):
+    manager: Manager
+    supervisor: Supervisor
+    experts: list[Expert]           # min 3, max 5
+    executors: list[Executor]       # default: []
+    perceivers: list[Perceiver]     # default: []
+    gating_config: GatingConfig
+
+    async def run(self, message: MsgPacket) -> ExpertPayload: ...
+```
+
+## MultiLine (M3)
+
+For enterprise-scale systems with 5+ experts organized into teams.
+
+Pipeline: Manager -> Integrators -> Gate -> Experts -> Fuse
+
+```python
+class Team(BaseModel):
+    name: str
+    supervisor: Supervisor
+    experts: list[Expert]
+    executors: list[Executor]
+    perceivers: list[Perceiver]
+
+class MultiLine(BaseModel):
+    manager: Manager
+    integrators: list[Integrator]   # min 1
+    expert_manager: ExpertManager
+    teams: list[Team]               # min 1
+    gating_config: GatingConfig
+
+    def all_experts(self) -> list[Expert]: ...
+    async def run(self, message: MsgPacket) -> ExpertPayload: ...
+```
+
+## Migration functions
+
+migrate_m1_to_m2(system, supervisor=None, additional_experts=None) -> OneLineSupervisor
+  Preserves all existing agents. Adds Supervisor + optional experts.
+
+migrate_m2_to_m3(system, integrators=None, expert_manager=None, team_name="team_1") -> MultiLine
+  Preserves all existing agents. Existing Supervisor becomes Team Supervisor.
+
+compute_preservation_ratio(original_agent_count, preserved_agent_count) -> float
+  Compute the code preservation ratio (100% agent preservation).
+
+## Auto-selection
+
+auto_select_modality(experts) -> "m1" | "m2" | "m3"
+  Based on expert count.
+
+validate_topology(system) -> {"valid": bool, "warnings": list}
+  Validates that a topology meets all modality constraints.
+
+---
+
+# Migration Guide
+
+Hymoex supports progressive migration between modalities. Start simple and scale up, preserving 100% of existing agent definitions at each step.
+
+## When to migrate
+
+- M1 -> M2: Expert count exceeds 2
+- M2 -> M3: Expert count exceeds 5, or multiple teams needed
+
+## Step 1: Start with M1
+
+```python
+from hymoex import Manager, Expert, OneLineMoE, MsgPacket
+
+manager = Manager(objective="Customer support")
+m1 = OneLineMoE(
+    manager=manager,
+    experts=[
+        Expert(domain="legal", skills=["contracts"]),
+        Expert(domain="tech", skills=["diagnostics"]),
+    ],
+)
+```
+
+## Step 2: Migrate to M2
+
+```python
+from hymoex import migrate_m1_to_m2, Expert
+
+m2 = migrate_m1_to_m2(m1, additional_experts=[
+    Expert(domain="billing", skills=["invoicing"]),
+])
+```
+
+What gets preserved: Manager, all Experts, Executors, Perceivers, GatingConfig, expert_weights.
+What gets added: Supervisor (auto-created or custom), additional Experts.
+
+## Step 3: Migrate to M3
+
+```python
+from hymoex import migrate_m2_to_m3
+
+m3 = migrate_m2_to_m3(m2, team_name="support_team")
+```
+
+What gets preserved: Manager, Supervisor (becomes Team Supervisor), all agents.
+What gets added: Integrator, ExpertManager, Team wrapper.
+
+## Adding teams after migration
+
+```python
+from hymoex import Team, Supervisor, Expert
+
+new_team = Team(
+    name="sales_team",
+    supervisor=Supervisor(routing="dependency_aware"),
+    experts=[Expert(domain="pricing", skills=["quotes"])],
+)
+m3.teams.append(new_team)
+```
+
+## Verifying preservation
+
+```python
+from hymoex.modalities.migration import compute_preservation_ratio
+
+ratio = compute_preservation_ratio(original_count, preserved_count)
+```
+
+---
+
+# LLM Providers
+
+Hymoex uses a provider abstraction (LLMProvider protocol) so you can plug in any LLM backend. Without a provider, agents return deterministic stub responses.
+
+## Provider protocol
+
+```python
+class LLMProvider(Protocol):
+    async def complete(self, system_prompt, user_message, temperature=0.7, max_tokens=1024) -> LLMResponse: ...
+    async def embed(self, text: str) -> list[float]: ...
+
+class LLMResponse(BaseModel):
+    content: str
+    tokens_used: int
+    model: str
+    metadata: dict[str, Any]
+```
+
+## LLM Integration
+
+Hymoex does not manage LLM calls — your chosen framework handles execution.
+Each framework has its own LLM configuration:
+
+```python
+# Pydantic AI
+agent = Agent("openai:gpt-4o-mini", system_prompt="You are a legal expert.")
+
+# LangGraph
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+# CrewAI
+agent = Agent(role="Legal Expert", llm="gpt-4o-mini")
+
+# AutoGen
+agent = AssistantAgent("legal", llm_config={"model": "gpt-4o-mini"})
+```
+
+## Framework examples
+
+```
+pip install -e ".[pydantic-ai]"    # Pydantic AI
+pip install -e ".[langgraph]"      # LangGraph
+pip install -e ".[crewai]"         # CrewAI
+pip install -e ".[autogen]"        # AutoGen
+pip install -e ".[all]"            # All of the above
+```
