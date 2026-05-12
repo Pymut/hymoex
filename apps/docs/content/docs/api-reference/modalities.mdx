@@ -1,0 +1,160 @@
+---
+title: Modalities API
+description: API reference for the three deployment modality classes and the auto-selection runner.
+---
+
+## OneLineMoE
+
+Modality M1 for simple systems with k ≤ 2 domain experts.
+
+```python
+from hymoex import OneLineMoE, Manager, Expert, MsgPacket
+
+class OneLineMoE(BaseModel):
+    manager: Manager
+    experts: list[Expert]           # min 1, max 2
+    executors: list[Executor]       # default: []
+    perceivers: list[Perceiver]     # default: []
+    gating_config: GatingConfig     # default: GatingConfig()
+    expert_weights: dict[str, list[float]]  # auto-initialized
+
+    async def run(self, message: MsgPacket) -> ExpertPayload:
+        """Run the full pipeline: Manager -> Gate -> Experts -> Fuse."""
+        ...
+```
+
+**Pipeline:**
+1. Manager processes `MsgPacket` into a `ContextEnvelope`
+2. Gate selects top-k experts via softmax scoring
+3. Selected experts process the request in parallel
+4. Rational-Raffle fuses the responses
+
+## OneLineSupervisor
+
+Modality M2 for coordinated systems with 3-5 domain experts.
+
+```python
+from hymoex import OneLineSupervisor, Manager, Supervisor, Expert
+
+class OneLineSupervisor(BaseModel):
+    manager: Manager
+    supervisor: Supervisor
+    experts: list[Expert]           # min 3, max 5
+    executors: list[Executor]       # default: []
+    perceivers: list[Perceiver]     # default: []
+    gating_config: GatingConfig     # default: GatingConfig()
+    expert_weights: dict[str, list[float]]  # auto-initialized
+
+    async def run(self, message: MsgPacket) -> ExpertPayload:
+        """Run the full pipeline: Manager -> Gate -> Experts -> Fuse -> Supervise."""
+        ...
+```
+
+**Pipeline:** Same as M1 but adds a Supervisor step after fusion. The Supervisor selects the highest-confidence response.
+
+## MultiLine
+
+Modality M3 for enterprise-scale systems with 5+ experts organized into teams.
+
+```python
+from hymoex import MultiLine, Team, Manager, Integrator, ExpertManager
+
+class Team(BaseModel):
+    name: str = "default"
+    supervisor: Supervisor
+    experts: list[Expert]
+    executors: list[Executor]       # default: []
+    perceivers: list[Perceiver]     # default: []
+
+class MultiLine(BaseModel):
+    manager: Manager
+    integrators: list[Integrator]   # min 1
+    expert_manager: ExpertManager
+    teams: list[Team]               # min 1
+    gating_config: GatingConfig
+    expert_weights: dict[str, list[float]]  # auto-initialized
+
+    def all_experts(self) -> list[Expert]:
+        """Return all experts across all teams."""
+        ...
+
+    async def run(self, message: MsgPacket) -> ExpertPayload:
+        """Run the full pipeline: Manager -> Integrators -> Gate -> Experts -> Fuse."""
+        ...
+```
+
+**Pipeline:**
+1. Manager processes `MsgPacket` into a `ContextEnvelope`
+2. Each Integrator processes the envelope (deducting SLA budget)
+3. Gate selects top-k experts from all teams
+4. Selected experts process the request in parallel
+5. Rational-Raffle fuses the responses
+
+## Migration functions
+
+### migrate_m1_to_m2
+
+```python
+from hymoex import migrate_m1_to_m2
+
+def migrate_m1_to_m2(
+    system: OneLineMoE,
+    supervisor: Supervisor | None = None,       # Auto-created if None
+    additional_experts: list[Expert] | None = None,
+) -> OneLineSupervisor:
+    """Migrate from M1 to M2. Preserves all existing agents."""
+    ...
+```
+
+All existing agents (Manager, Experts, Executors, Perceivers) and gating configuration are preserved. A Supervisor is added, and additional experts can be included to meet the M2 minimum of 3.
+
+### migrate_m2_to_m3
+
+```python
+from hymoex import migrate_m2_to_m3
+
+def migrate_m2_to_m3(
+    system: OneLineSupervisor,
+    integrators: list[Integrator] | None = None,    # Auto-created if None
+    expert_manager: ExpertManager | None = None,     # Auto-created if None
+    team_name: str = "team_1",
+) -> MultiLine:
+    """Migrate from M2 to M3. Preserves all existing agents."""
+    ...
+```
+
+The existing Supervisor becomes a Team Supervisor. Integrators and an Expert Manager are added to enable cross-team coordination.
+
+### compute_preservation_ratio
+
+```python
+from hymoex.modalities.migration import compute_preservation_ratio
+
+ratio = compute_preservation_ratio(
+    original_agent_count=5,
+    preserved_agent_count=5,
+)
+# 1.0 (100% preservation)
+```
+
+## Auto-selection
+
+### auto_select_modality
+
+```python
+from hymoex import auto_select_modality
+
+modality = auto_select_modality(experts)
+# Returns "m1" (k ≤ 2), "m2" (3-5), or "m3" (>5)
+```
+
+### validate_topology
+
+```python
+from hymoex import validate_topology
+
+validation = validate_topology(system)
+# Returns {"valid": True/False, "warnings": [...]}
+```
+
+Validates that a topology meets all modality constraints (expert count, required roles, etc.).
