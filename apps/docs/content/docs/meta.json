@@ -1,0 +1,19 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "---Getting Started---",
+    "getting-started/installation",
+    "getting-started/quickstart",
+    "---Architecture---",
+    "architecture/overview",
+    "architecture/modalities",
+    "architecture/moe-gating",
+    "---API Reference---",
+    "api-reference/agents",
+    "api-reference/messaging",
+    "api-reference/modalities",
+    "---Guides---",
+    "guides/migration"
+  ]
+}

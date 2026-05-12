@@ -1,0 +1,33 @@
+---
+title: Hymoex Documentation
+description: Hybrid Modular Coordinated Experts — a cognitive architecture for scalable multi-agent systems.
+---
+
+## Welcome to Hymoex
+
+**Hymoex** (Hybrid Modular Coordinated Experts) is an architectural paradigm for building scalable multi-agent systems with Mixture-of-Experts gating, progressive migration, and framework-agnostic patterns.
+
+## Key Features
+
+- **7-role agent taxonomy** — Manager, Integrator, Expert Manager, Supervisor, Expert, Executor, Perceiver
+- **3 deployment modalities** — One-Line MoE, One-Line Supervisor, MoE MultiLine
+- **MoE gating** — 96.7% expert selection accuracy via LLM-based routing
+- **Progressive migration** — Scale from M1 to M3 preserving 100% of existing agents
+- **7 framework examples** — Pydantic AI, LangGraph, CrewAI, AutoGen, Swarm, Vercel AI SDK, Mastra
+
+## Quick Links
+
+- [Installation](/docs/getting-started/installation) — Set up Hymoex in your project
+- [Quickstart](/docs/getting-started/quickstart) — Build your first multi-agent system
+- [Architecture Overview](/docs/architecture/overview) — Understand the design
+- [API Reference](/docs/api-reference/agents) — Full class reference
+- [Migration Guide](/docs/guides/migration) — Scale your system progressively
+
+## Project Structure
+
+```
+packages/hymoex-python/   # Type definitions (taxonomy, modalities, protocols)
+packages/research/        # Benchmarks and paper
+apps/sandbox/             # Interactive sandbox (CLI, notebooks)
+apps/docs/                # This documentation site
+```
