@@ -1,0 +1,179 @@
+---
+title: Migration Guide
+description: Scale your Hymoex system progressively from M1 to M2 to M3 without rewriting agents.
+---
+
+Hymoex supports **progressive migration** between modalities. You start simple and scale up as your system grows, preserving 100% of existing agent definitions at each step.
+
+## When to migrate
+
+| Current modality | Trigger | Target |
+|---|---|---|
+| M1 (One-Line MoE) | Expert count exceeds 2 | M2 (One-Line Supervisor) |
+| M2 (One-Line Supervisor) | Expert count exceeds 5, or multiple teams needed | M3 (MoE MultiLine) |
+
+## Step 1: Start with M1
+
+Begin with the simplest modality for 1-2 experts:
+
+```python
+from hymoex import Manager, Expert, OneLineMoE, MsgPacket
+
+manager = Manager(objective="Customer support")
+expert_a = Expert(domain="legal", skills=["contracts"])
+expert_b = Expert(domain="tech", skills=["diagnostics"])
+
+m1 = OneLineMoE(
+    manager=manager,
+    experts=[expert_a, expert_b],
+)
+
+result = await m1.run(
+    MsgPacket(channel="web", customer_id="c1", payload="Contract question")
+)
+```
+
+## Step 2: Migrate to M2
+
+When you need more than 2 experts, migrate to M2. The migration function preserves all existing agents:
+
+```python
+from hymoex import migrate_m1_to_m2, Expert
+
+expert_c = Expert(domain="billing", skills=["invoicing"])
+
+m2 = migrate_m1_to_m2(
+    m1,
+    additional_experts=[expert_c],
+)
+
+# m2 now contains:
+# - Same Manager from m1
+# - All experts from m1 + expert_c
+# - Auto-created Supervisor
+# - Same gating config
+# - Same executors/perceivers
+```
+
+### What gets preserved
+
+- `Manager` -- same instance, same objective and strategy
+- `Expert` instances -- all original experts are kept
+- `Executor` and `Perceiver` instances -- carried forward
+- `GatingConfig` -- same temperature, top_k settings
+- `expert_weights` -- existing weight vectors preserved
+
+### What gets added
+
+- `Supervisor` -- auto-created with `routing="dependency_aware"` (or pass your own)
+- Additional `Expert` instances -- appended to the expert list
+
+### Providing a custom Supervisor
+
+```python
+from hymoex import Supervisor
+
+custom_supervisor = Supervisor(routing="priority_based")
+m2 = migrate_m1_to_m2(m1, supervisor=custom_supervisor)
+```
+
+## Step 3: Migrate to M3
+
+When you need 5+ experts or multiple teams, migrate to M3:
+
+```python
+from hymoex import migrate_m2_to_m3
+
+m3 = migrate_m2_to_m3(m2, team_name="support_team")
+
+# m3 now contains:
+# - Same Manager from m2
+# - Auto-created Integrator
+# - Auto-created Expert Manager
+# - One Team containing the original Supervisor + all experts
+```
+
+### What gets preserved
+
+- `Manager` -- same instance
+- `Supervisor` -- becomes the Team Supervisor
+- All `Expert`, `Executor`, `Perceiver` instances -- placed into the team
+- `GatingConfig` and `expert_weights` -- carried forward
+
+### What gets added
+
+- `Integrator` -- auto-created (or pass your own list)
+- `ExpertManager` -- auto-created (or pass your own)
+- `Team` wrapper -- wraps existing agents into a named team
+
+### Adding more teams after migration
+
+```python
+from hymoex import Team, Supervisor, Expert
+
+new_team = Team(
+    name="sales_team",
+    supervisor=Supervisor(routing="dependency_aware"),
+    experts=[
+        Expert(domain="pricing", skills=["quotes"]),
+        Expert(domain="crm", skills=["lead_scoring"]),
+    ],
+)
+
+# Add team to the existing MultiLine system
+m3.teams.append(new_team)
+```
+
+## Verifying preservation
+
+Use `compute_preservation_ratio` to verify that migration preserved your agents:
+
+```python
+from hymoex.modalities.migration import compute_preservation_ratio
+
+original_count = len(m1.experts) + 1  # experts + manager
+preserved_count = original_count      # all preserved in m2
+
+ratio = compute_preservation_ratio(original_count, preserved_count)
+print(f"Preservation: {ratio:.0%}")  # 100%
+```
+
+Migration preserves 100% of existing agent definitions — only new coordination agents are added.
+
+## Full migration example
+
+```python
+import asyncio
+from hymoex import (
+    Manager, Expert, MsgPacket,
+    OneLineMoE, migrate_m1_to_m2, migrate_m2_to_m3,
+)
+
+async def main():
+    manager = Manager(objective="Support", strategy="route_by_domain")
+
+    # Start with M1
+    m1 = OneLineMoE(
+        manager=manager,
+        experts=[
+            Expert(domain="legal", skills=["contracts"]),
+            Expert(domain="tech", skills=["diagnostics"]),
+        ],
+    )
+
+    msg = MsgPacket(channel="web", customer_id="c1", payload="Help with contract")
+
+    # Scale to M2
+    m2 = migrate_m1_to_m2(m1, additional_experts=[
+        Expert(domain="billing", skills=["invoicing"]),
+    ])
+    result = await m2.run(msg)
+    print(f"M2 result: {result.reply_draft}")
+
+    # Scale to M3
+    m3 = migrate_m2_to_m3(m2)
+    result = await m3.run(msg)
+    print(f"M3 result: {result.reply_draft}")
+
+asyncio.run(main())
+```
