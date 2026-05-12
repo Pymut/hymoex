@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "packages/hymoex-python/uv.lock"
+
+      - name: Install dependencies
+        run: cd packages/hymoex-python && uv sync
+
+      - name: Run tests
+        run: cd packages/hymoex-python && uv run python -m pytest tests/unit/ --override-ini="addopts=" -v
+
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "packages/hymoex-python/uv.lock"
+
+      - name: Install dependencies
+        run: cd packages/hymoex-python && uv sync
+
+      - name: Ruff check
+        run: cd packages/hymoex-python && uv run ruff check src/
