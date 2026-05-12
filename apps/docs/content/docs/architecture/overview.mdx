@@ -1,0 +1,93 @@
+---
+title: Architecture Overview
+description: Understand the Hymoex cognitive architecture, its 7-role agent taxonomy, and hierarchical design.
+---
+
+**Hymoex** (Hybrid Modular Coordinated Experts) is a cognitive architecture for building scalable multi-agent systems. It combines Mixture-of-Experts (MoE) gating with a hierarchical agent taxonomy and progressive deployment modalities.
+
+## Core principles
+
+- **Clean Architecture** -- each layer has clearly defined responsibilities
+- **SOLID principles** -- every agent fulfills a single role; the system is extensible without restructuring
+- **Asynchronous by default** -- all agent processing is `async`, enabling parallel expert execution
+- **Framework-agnostic** -- apply Hymoex patterns to any framework: Pydantic AI, LangGraph, CrewAI, AutoGen, and more
+
+## The 7-role agent taxonomy
+
+Every agent in Hymoex has one of seven roles, defined in the `Role` enum:
+
+| Role | Class | Layer | Responsibility |
+|---|---|---|---|
+| Manager | `Manager` | Strategic | Sets global objectives, determines routing strategy |
+| Integrator | `Integrator` | Coordination | Routes context across domains, manages SLA budgets (M3 only) |
+| Expert Manager | `ExpertManager` | Coordination | Orchestrates MoE gating across expert pools (M3 only) |
+| Supervisor | `Supervisor` | Tactical | Coordinates expert delegation, manages task dependencies |
+| Expert | `Expert` | Knowledge | Provides domain-specific knowledge and resolves specialized queries |
+| Executor | `Executor` | Operational | Performs external actions (API calls, payments, document generation) |
+| Perceiver | `Perceiver` | Operational | Captures environmental telemetry and feeds real-time feedback loops |
+
+## Agent base class
+
+All agents extend `BaseAgent`, a Pydantic v2 model:
+
+```python
+class BaseAgent(BaseModel):
+    id: str           # Auto-generated 8-char hex
+    role: Role        # One of the 7 roles
+    config: dict      # Arbitrary configuration
+    llm: LLMProvider | None  # Optional LLM backend
+
+    async def process(self, message: Any) -> Any:
+        ...
+```
+
+## Communication: the HIP protocol
+
+Agents communicate via the **Hymoex Interchange Protocol (HIP)**, which defines 7 typed message models (all Pydantic v2):
+
+| Message | Direction | Purpose |
+|---|---|---|
+| `MsgPacket` | User -> Manager | Raw user input with channel metadata |
+| `ContextEnvelope` | Manager -> Supervisor/Integrator | Enriched packet with routing state and SLA budget |
+| `DecisionRequest` | Supervisor -> MoE gate | Signal vector plus context for expert selection |
+| `ExpertPayload` | Expert -> Supervisor | Expert response with confidence and audit trail |
+| `ExecCommand` | Supervisor -> Executor | Typed action command (CRM update, payment, etc.) |
+| `ExecReceipt` | Executor -> Perceiver | Execution result with latency and status |
+| `Telemetry` | Perceiver -> System | Real-time feedback (sentiment, delivery status) |
+
+## Three deployment modalities
+
+Hymoex deploys in one of three modalities based on system complexity:
+
+```
+M1: Manager -> Expert(s) -> Executors/Perceivers          (k ≤ 2 experts)
+M2: Manager -> Supervisor -> Expert(s)                     (3-5 experts)
+M3: Manager -> Integrators -> Expert Manager -> Teams      (5+ experts)
+```
+
+See [Deployment Modalities](/docs/architecture/modalities) for details on each.
+
+## MoE gating
+
+The Mixture-of-Experts gate uses a softmax function to select the most relevant experts for a given request:
+
+```
+g(s) = softmax(Ws + b)
+```
+
+Where `s` is a composite signal vector composed of intent embeddings, emotion vectors, stage flags, and lead scores. The gate selects the top-k experts and routes the request to them in parallel.
+
+See [MoE Gating](/docs/architecture/moe-gating) for the full algorithm.
+
+## Progressive migration
+
+Systems can scale from M1 to M3 without rewriting agents. The migration functions preserve 100% of existing agent definitions — only additive changes are needed:
+
+```python
+from hymoex import migrate_m1_to_m2, migrate_m2_to_m3
+
+m2 = migrate_m1_to_m2(m1, additional_experts=[expert_c])
+m3 = migrate_m2_to_m3(m2)
+```
+
+See the [Migration Guide](/docs/guides/migration) for step-by-step instructions.

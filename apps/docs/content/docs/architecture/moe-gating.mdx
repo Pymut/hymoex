@@ -1,0 +1,149 @@
+---
+title: MoE Gating
+description: How the Mixture-of-Experts gating mechanism selects and fuses expert responses.
+---
+
+The MoE (Mixture-of-Experts) gating mechanism is the core decision-making component of Hymoex. It selects the most relevant experts for a given request and fuses their responses into a single output.
+
+## Pipeline overview
+
+The gating pipeline has three stages:
+
+1. **Signal extraction** -- build a composite signal vector from the request
+2. **Softmax scoring** -- compute selection probabilities for each expert
+3. **Top-k selection** -- pick the k highest-scoring experts
+
+After the selected experts process the request in parallel, their responses are fused using the **Rational-Raffle** mechanism.
+
+## Stage 1: Signal vector
+
+The `SignalVector` is a composite vector assembled from four components:
+
+```python
+class SignalVector(BaseModel):
+    intent_embedding: list[float]    # Intent classification embedding
+    emotion_embedding: list[float]   # Emotion/sentiment embedding
+    stage_flag: list[float]          # Workflow stage indicators
+    lead_score: float                # Lead qualification score
+
+    def to_vector(self) -> list[float]:
+        return self.intent_embedding + self.emotion_embedding + self.stage_flag + [self.lead_score]
+```
+
+The signal vector is extracted from a `DecisionRequest`:
+
+```python
+from hymoex.moe.gate import compute_signal_vector
+
+signal = compute_signal_vector(decision_request)
+```
+
+For LLM-backed intent detection, use `compute_signal_vector_with_llm` which calls the provider's `embed()` method to generate real intent embeddings from the message payload.
+
+## Stage 2: Softmax gate
+
+The gate computes selection probabilities using:
+
+```
+g(s) = softmax(Ws + b)
+```
+
+Where:
+- `s` is the signal vector
+- `W` is the expert weight matrix (one weight vector per expert)
+- `b` is an optional bias vector
+- Temperature scaling controls the sharpness of the distribution
+
+```python
+from hymoex.moe.gate import softmax_gate, GatingConfig
+
+config = GatingConfig(temperature=1.0, top_k=2)
+scores = softmax_gate(signal, expert_weights, config=config)
+# {"expert_a": 0.72, "expert_b": 0.28}
+```
+
+### GatingConfig
+
+```python
+class GatingConfig(BaseModel):
+    temperature: float = 1.0          # Softmax temperature
+    top_k: int = 2                    # Number of experts to select
+    low_temperature: float = 0.5      # Temperature under SLA pressure
+    sla_threshold_ms: float = 500.0   # Budget threshold for temperature switch
+```
+
+### Dynamic temperature
+
+When SLA budget is running low, the gate automatically switches to a lower temperature, producing a sharper distribution that favors the single best expert:
+
+```python
+from hymoex.moe.gate import apply_dynamic_temperature
+
+t_eff = apply_dynamic_temperature(config, sla_budget_remaining=200.0)
+# Returns config.low_temperature (0.5) because 200 &lt; 500 threshold
+```
+
+## Stage 3: Top-k selection
+
+The top-k experts are selected by descending gating score:
+
+```python
+from hymoex.moe.gate import top_k_select
+
+selected = top_k_select(scores, k=2)
+# [("expert_a", 0.72), ("expert_b", 0.28)]
+```
+
+## Convenience function
+
+The `gate_experts` function combines all three stages:
+
+```python
+from hymoex.moe.gate import gate_experts
+
+result = gate_experts(
+    request=decision_request,
+    expert_weights={"expert_a": [1.0], "expert_b": [0.5]},
+    config=GatingConfig(top_k=2),
+)
+
+print(result.selected_experts)  # ["expert_a", "expert_b"]
+print(result.weights)           # {"expert_a": 0.72, "expert_b": 0.28}
+```
+
+## Rational-Raffle fusion
+
+After the selected experts produce responses, the **Rational-Raffle** mechanism fuses them:
+
+```
+score(r_i) = alpha_i * relevance(r_i, m) * confidence(r_i)
+```
+
+Where:
+- `alpha_i` is the gating weight from the softmax
+- `relevance(r_i, m)` is the Jaccard similarity between the response and the original message
+- `confidence(r_i)` is the expert's self-reported confidence
+
+The highest-scoring response becomes the base response. Additional responses above the fusion threshold are appended as augmented content.
+
+```python
+from hymoex.moe.fusioner import rational_raffle, FusionConfig
+
+result = rational_raffle(
+    responses=[(payload_a, 0.72), (payload_b, 0.28)],
+    request=decision_request,
+    config=FusionConfig(threshold=0.3),
+)
+
+print(result.base_response)      # Highest-scoring ExpertPayload
+print(result.augmented_content)  # Additional responses above threshold
+print(result.scores)             # {"expert_a": 0.41, "expert_b": 0.11}
+print(result.reason_vector_hash) # SHA-256 audit trail
+```
+
+### FusionConfig
+
+```python
+class FusionConfig(BaseModel):
+    threshold: float = 0.3  # Minimum score to include as augmented content
+```
