@@ -164,7 +164,7 @@ MIT — see [LICENSE](LICENSE).
 
 <div align="center">
 
-**Pymut Lab** | [Paper](papers/hymoex-cognitive-architecture.pdf) | [Docs](apps/docs/)
+**Pymut Lab** | [Paper](packages/research/papers/hymoex-paper.pdf) | [Docs](apps/docs/)
 
 </div>
 
