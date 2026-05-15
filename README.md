@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen.svg)]()
 
-[Documentation](apps/docs/) | [Quick Start](#quick-start) | [Examples](packages/examples/) | [Paper](papers/hymoex-cognitive-architecture.pdf)
+[Documentation](apps/docs/) | [Quick Start](#quick-start) | [Examples](packages/examples/) | [Paper](packages/research/papers/hymoex-paper.pdf)
 
 </div>
 
