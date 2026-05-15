@@ -150,7 +150,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.
 ```bibtex
 @software{pymut2026hymoex,
   title = {Hymoex: A Hybrid Modular Cognitive Architecture for Scalable Multi-Agent Expert Coordination},
-  author = {Timana, Joel and Munoz, Diana and Munoz, Alvaro},
+  author = {Timana, Joel and Munoz, Diana},
   year = {2026},
   url = {https://github.com/Pymut/hymoex}
 }
